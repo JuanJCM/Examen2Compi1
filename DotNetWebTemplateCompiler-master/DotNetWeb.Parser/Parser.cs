@@ -1,5 +1,7 @@
 ﻿using DotNetWeb.Core;
+using DotNetWeb.Core.Expressions;
 using DotNetWeb.Core.Interfaces;
+using DotNetWeb.Core.Statements;
 using System;
 
 namespace DotNetWeb.Parser
@@ -18,57 +20,64 @@ namespace DotNetWeb.Parser
             Program();
         }
 
-        private void Program()
+        private Statement Program()
         {
-            Init();
-            Template();
+            var stt1 = Init();
+           var stt2 = Template();
+            return new SequenceStatement(stt1, stt2);
         }
 
-        private void Template()
+        private Statement Template()
         {
-            Tag();
-            InnerTemplate();
+           var stt1 = Tag();
+           var stt2 = InnerTemplate();
+            return new SequenceStatement(stt1, stt2);
         }
         
-        private void InnerTemplate()
+        private Statement InnerTemplate()
         {
             if (this.lookAhead.TokenType == TokenType.LessThan)
             {
-                Template();
+                return Template();
             }
+            return null;
         }
         private void Tag()
         {
             Match(TokenType.LessThan);
             Match(TokenType.Identifier);
             Match(TokenType.GreaterThan);
-            Stmts();
+            var stt = Stmts();
             Match(TokenType.LessThan);
             Match(TokenType.Slash);
             Match(TokenType.Identifier);
             Match(TokenType.GreaterThan);
+            return stt;
         }
 
-        private void Stmts()
+        private Statement Stmts()
         {
             if (this.lookAhead.TokenType == TokenType.OpenBrace)
             {
-                Stmt();
-                Stmts();
+                var stt1 = Stmt();
+                var stt2 = Stmts();
+                return new SequenceStatement(stt1, stt2);
             }
+            return null;
         }
 
-        private void Stmt()
+        private Statement Stmt()
         {
             Match(TokenType.OpenBrace);
+           
             switch (this.lookAhead.TokenType)
             {
                 case TokenType.OpenBrace:
                     Match(TokenType.OpenBrace);
-                    Eq();
+                    var stt = Eq();
                     Match(TokenType.CloseBrace);
                     Match(TokenType.CloseBrace);
-                    break;
+                    return stt;
                 case TokenType.Percentage:
                     IfStmt();
                     break;
@@ -77,10 +86,11 @@ namespace DotNetWeb.Parser
                     break;
                 default:
                     throw new ApplicationException("Unrecognized statement");
+                    return null;
             }
         }
 
-        private void ForeachStatement()
+        private Statement ForeachStatement()
         {
             Match(TokenType.Hyphen);
             Match(TokenType.Percentage);
@@ -90,81 +100,91 @@ namespace DotNetWeb.Parser
             Match(TokenType.Identifier);
             Match(TokenType.Percentage);
             Match(TokenType.CloseBrace);
-            Template();
+            var stt= Template();
             Match(TokenType.OpenBrace);
             Match(TokenType.Percentage);
             Match(TokenType.EndForEachKeyword);
             Match(TokenType.Percentage);
             Match(TokenType.CloseBrace);
+            return stt;
         }
 
-        private void IfStmt()
+        private Statement IfStmt()
         {
             Match(TokenType.Percentage);
             Match(TokenType.IfKeyword);
-            Eq();
+            var stt1 = Eq();
             Match(TokenType.Percentage);
             Match(TokenType.CloseBrace);
-            Template();
+            var stt2 = Template();
             Match(TokenType.OpenBrace);
             Match(TokenType.Percentage);
             Match(TokenType.EndIfKeyword);
             Match(TokenType.Percentage);
             Match(TokenType.CloseBrace);
+            return new SequenceStatement(stt1, stt2);
         }
 
-        private void Eq()
+        private Expression Eq()
         {
-            Rel();
+           var expr = Rel();
             while (this.lookAhead.TokenType == TokenType.Equal || this.lookAhead.TokenType == TokenType.NotEqual)
             {
                 Move();
-                Rel();
+                expr = Rel();
+                return expr;
             }
+            return null;
         }
 
-        private void Rel()
+        private Statement Rel()
         {
-            Expr();
+            var stt = Expr();
             if (this.lookAhead.TokenType == TokenType.LessThan
                 || this.lookAhead.TokenType == TokenType.GreaterThan)
             {
                 Move();
-                Expr();
+                stt = Expr();
+                return stt;
             }
+            return null;
         }
 
-        private void Expr()
+        private Expression Expr()
         {
-            Term();
+            var stt = Term();
             while (this.lookAhead.TokenType == TokenType.Plus || this.lookAhead.TokenType == TokenType.Hyphen)
             {
                 Move();
-                Term();
+                stt = Term();
+                return stt;
             }
+            return null;
         }
 
-        private void Term()
+        private Expression Term()
         {
-            Factor();
+            var stt = Factor();
             while (this.lookAhead.TokenType == TokenType.Asterisk || this.lookAhead.TokenType == TokenType.Slash)
             {
                 Move();
-                Factor();
+                 stt = Factor();
+                return stt;
             }
+            return null;
         }
 
-        private void Factor()
+        private Expression Factor()
         {
             switch (this.lookAhead.TokenType)
             {
                 case TokenType.LeftParens:
                     {
                         Match(TokenType.LeftParens);
-                        Eq();
+                        var expr = Eq();
                         Match(TokenType.RightParens);
+                        return expr;
                     }
-                    break;
                 case TokenType.IntConstant:
                     Match(TokenType.IntConstant);
                     break;
@@ -176,57 +196,62 @@ namespace DotNetWeb.Parser
                     break;
                 case TokenType.OpenBracket:
                     Match(TokenType.OpenBracket);
-                    ExprList();
+                    var expr = ExprList();
                     Match(TokenType.CloseBracket);
-                    break;
+                    return expr;
                 default:
                     Match(TokenType.Identifier);
-                    break;
+                    return null;
             }
         }
 
-        private void ExprList()
+        private Statement ExprList()
         {
-            Eq();
+            var expr = Eq();
             if (this.lookAhead.TokenType != TokenType.Comma)
             {
-                return;
+                return null;
             }
             Match(TokenType.Comma);
-            ExprList();
+            var expr2 = ExprList();
+            new SequenceStatement(expr, expr2);
         }
 
-        private void Init()
+        private Statement Init()
         {
             Match(TokenType.OpenBrace);
             Match(TokenType.Percentage);
             Match(TokenType.InitKeyword);
-            Code();
+           var stt = Code();
             Match(TokenType.Percentage);
             Match(TokenType.CloseBrace);
+            return stt;
         }
 
-        private void Code()
+        private Statement Code()
         {
             Decls();
-            Assignations();
+            return Assignations();
         }
 
-        private void Assignations()
+        private Statement Assignations()
         {
             if (this.lookAhead.TokenType == TokenType.Identifier)
             {
-                Assignation();
-                Assignations();
+                var stt1 = Assignation();
+                var stt2 = Assignations();
+                return new SequenceStatement(stt1, stt2);
             }
+            return null;
         }
 
-        private void Assignation()
+        private Statement Assignation()
         {
             Match(TokenType.Identifier);
             Match(TokenType.Assignation);
-            Eq();
+            var stt=Eq();
             Match(TokenType.SemiColon);
+            return stt;
         }
 
         private void Decls()

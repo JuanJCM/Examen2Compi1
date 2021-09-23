@@ -20,6 +20,13 @@ namespace DotNetWeb.Core
             if (ReferenceEquals(this, other)) return true;
             return Lexeme == other.Lexeme && TokenType == other.TokenType;
         }
+        public static Type Int => new Type("int", TokenType.IntKeyword);
+        public static Type Float => new Type("float", TokenType.FloatKeyword);
+        public static Type String => new Type("string", TokenType.StringKeyword);
+        public static Type Stringlist => new Type("stringlist", TokenType.StringListKeyword);
+        public static Type Floatlist => new Type("floatlist", TokenType.FloatKeyword);
+        public static Type Intlist => new Type("intlist", TokenType.IntKeyword);
+        public static Type Bool => new Type("bool", TokenType.BoolKeyword);
 
         public override bool Equals(object obj)
         {

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace DotNetWeb.Core.Interfaces
 {
-    public interface ISemanticEvaluate
+    public interface IStatementEvaluate
     {
         void Interpret();
     }
