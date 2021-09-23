@@ -13,7 +13,7 @@ namespace DotNetWeb.Core.Statements
             Id = id;
             Expression = expression;
         }
-        //Hay que cambiar
+       
 
         public Id Id { get; }
         public TypedExpression Expression { get; }
